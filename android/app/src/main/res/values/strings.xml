@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OneWork</string>
+    <string name="voice_input">语音输入</string>
+    <string name="send">发送</string>
+    <string name="new_session">新建受管会话</string>
+    <string name="attention_count">%1$d 个等你</string>
+    <string name="running_count">%1$d 个运行中</string>
+    <string name="completed_count">%1$d 个刚完成</string>
+    <string name="status_with_dot">●  %1$s</string>
+    <string name="section_count">%1$s  %2$d%3$s</string>
+    <string name="context_summary">必要上下文 · %1$s</string>
+    <string name="no_recent_sessions">最近一小时没有 Codex 会话</string>
+    <string name="connecting_title">正在连接 Mac…</string>
+    <string name="connecting_meta">请确认 Mac 服务在线，并检查 Wi-Fi 配对或 USB 连接</string>
+    <string name="empty_connected_meta">Mac 已连接 · 可以从平板新建一个受管会话</string>
+    <string name="calm_title">所有 Agent 正常运行</string>
+</resources>

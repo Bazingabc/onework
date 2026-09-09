@@ -1,0 +1,29 @@
+# Build outputs and local tool caches
+**/build/
+**/dist/
+**/.gradle/
+**/__pycache__/
+*.py[cod]
+.venv/
+.DS_Store
+local.properties
+*.app/
+*.apk
+*.aab
+
+# Credentials, signing material and user runtime data
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.sqlite3*
+*.db
+*.log
+.agent-views/
+.codex/
+
+# Keep the Gradle wrapper JAR; it is required to build a clean checkout.
