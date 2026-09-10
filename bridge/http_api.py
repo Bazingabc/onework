@@ -147,6 +147,9 @@ class AgentViewsRequestHandler(BaseHTTPRequestHandler):
                 return
             if segments == ["api", "health"]:
                 health = self.service.health()
+                if not health.get('ok'):
+                    health = {**health, 'error': {'code': 'codex_unavailable',
+                              'message': health.get('lastError') or 'Codex 暂不可用，正在恢复'}}
                 self._send_json(200 if health.get("ok") else 503, health)
                 return
             if segments == ["api", "sessions"]:

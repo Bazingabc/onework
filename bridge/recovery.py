@@ -9,6 +9,7 @@ class RecoveringService:
         self.factory = factory
         self.current = None
         self.last_error = '正在连接 Codex'
+        self.last_disconnect = None
         self.generation = uuid.uuid4().hex
         self.stop = threading.Event()
         self.thread = None
@@ -30,8 +31,9 @@ class RecoveringService:
                     continue
                 self.current = None
                 self.generation = uuid.uuid4().hex
+                self.last_disconnect = active.health().get('lastError') or 'Codex 子进程已退出'
                 active.close()
-                self.last_error = 'Codex 连接中断，正在恢复；旧审批已失效'
+                self.last_error = str(self.last_disconnect)[:300] + '；正在恢复，旧审批已失效'
             if attempts >= 5:
                 self.last_error = 'Codex 连续启动失败。请在 Mac 检查路径、版本与登录后重启连接'
                 self.stop.wait()
@@ -56,8 +58,9 @@ class RecoveringService:
     def health(self):
         active = self.current
         if active:
-            return dict(active.health(), generation=self.generation)
-        return {'ok':False, 'lastError':self.last_error, 'generation':self.generation}
+            return dict(active.health(), generation=self.generation, lastDisconnect=self.last_disconnect)
+        return {'ok':False, 'lastError':self.last_error, 'generation':self.generation,
+                'lastDisconnect':self.last_disconnect}
 
     def request(self, *args, **kwargs):
         active=self.current

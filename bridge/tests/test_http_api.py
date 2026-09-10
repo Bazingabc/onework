@@ -107,6 +107,13 @@ class HttpApiTest(unittest.TestCase):
     def android_headers(self):
         return {CLIENT_HEADER: CLIENT_HEADER_VALUE}
 
+    def test_unavailable_health_exposes_actionable_error(self):
+        self.service.health = lambda: {"ok": False, "lastError": "App Server 单行输出超过安全上限"}
+        status, payload = self.request("/api/health")
+        self.assertEqual(status, 503)
+        self.assertEqual(payload["error"]["code"], "codex_unavailable")
+        self.assertEqual(payload["error"]["message"], payload["lastError"])
+
     def test_health_list_and_detail_contract(self):
         health_status, health = self.request("/api/health")
         list_status, listed = self.request("/api/sessions")

@@ -460,6 +460,15 @@ class AgentViewsService:
                 }
         return {"active": False}
 
+    def _thread_request(self, method: str, thread_id: str) -> Dict[str, Any]:
+        bounded = getattr(self.protocol, 'read_thread' if method == 'thread/read' else 'resume_thread', None)
+        if callable(bounded):
+            return bounded(thread_id)
+        # Compatibility for protocol adapters without the bounded-read helper.
+        params = {'threadId': thread_id}
+        if method == 'thread/read': params['includeTurns'] = True
+        return self.protocol.request(method, params)
+
     def _refresh_thread_detail(
         self, thread: Mapping[str, Any], *, force: bool = False, strict: bool = False
     ) -> Dict[str, Any]:
@@ -486,9 +495,7 @@ class AgentViewsService:
         if locally_created and not strict:
             return snapshot
         try:
-            response = self.protocol.request(
-                "thread/read", {"threadId": thread_id, "includeTurns": True}
-            )
+            response = self._thread_request('thread/read', thread_id)
             detail = response.get("thread") if isinstance(response, dict) else None
             if not isinstance(detail, dict):
                 if strict:
@@ -671,7 +678,7 @@ class AgentViewsService:
                     self._statuses[thread_id] = status
                 continue
             try:
-                resumed = self.protocol.request("thread/resume", {"threadId": thread_id})
+                resumed = self._thread_request('thread/resume', thread_id)
                 resumed_thread = (
                     resumed.get("thread", {}) if isinstance(resumed, dict) else {}
                 )
@@ -851,9 +858,7 @@ class AgentViewsService:
             if raw is not None:
                 thread = self._refresh_thread_detail(raw, force=True, strict=strict)
             else:
-                response = self.protocol.request(
-                    "thread/read", {"threadId": identifier, "includeTurns": True}
-                )
+                response = self._thread_request('thread/read', identifier)
                 thread = response.get("thread") if isinstance(response, dict) else None
         except Exception as exc:
             if strict:
@@ -924,9 +929,7 @@ class AgentViewsService:
 
     def _read_thread_for_write(self, thread_id: str) -> Dict[str, Any]:
         try:
-            response = self.protocol.request(
-                "thread/read", {"threadId": thread_id, "includeTurns": True}
-            )
+            response = self._thread_request('thread/read', thread_id)
             thread = response.get("thread") if isinstance(response, dict) else None
         except Exception as exc:
             raise AgentViewsError(
@@ -983,7 +986,7 @@ class AgentViewsService:
                 409,
             )
         try:
-            response = self.protocol.request("thread/resume", {"threadId": thread_id})
+            response = self._thread_request('thread/resume', thread_id)
             resumed = response.get("thread") if isinstance(response, dict) else None
         except Exception as exc:
             raise AgentViewsError(

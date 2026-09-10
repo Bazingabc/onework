@@ -206,6 +206,7 @@ class AgentProtocolTest(unittest.TestCase):
                 "thread/list",
                 "thread/start",
                 "thread/read",
+                "thread/turns/list",
                 "thread/resume",
                 "thread/fork",
                 "turn/start",

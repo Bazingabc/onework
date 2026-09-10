@@ -18,6 +18,7 @@ CLIENT_METHODS = frozenset(
         "thread/list",
         "thread/start",
         "thread/read",
+        "thread/turns/list",
         "thread/resume",
         "thread/fork",
         "turn/start",
@@ -235,6 +236,56 @@ class CodexAppServerClient:
         self._stderr_reader: Optional[threading.Thread] = None
         self._closed = threading.Event()
         self.stderr_tail = ""
+        self._paged_history: Optional[bool] = None
+
+    def read_thread(self, thread_id: str) -> Dict[str, Any]:
+        """Read a bounded recent display window, never hydrate modern full histories.
+
+        Older servers may explicitly reject pagination; only that precise
+        unsupported-method response allows the legacy path (not timeouts/errors).
+        """
+        if self._paged_history is False:
+            return self.request('thread/read', {'threadId': thread_id, 'includeTurns': True})
+        for _ in range(2):
+            before = self.request('thread/read', {'threadId': thread_id, 'includeTurns': False})
+            thread = before.get('thread') if isinstance(before, dict) else None
+            if not isinstance(thread, dict) or thread.get('id') != thread_id:
+                raise CodexProtocolError('protocol_invalid_response', 'Codex 会话元信息无效')
+            try:
+                page = self.request('thread/turns/list', {'threadId': thread_id, 'limit': 4,
+                                    'sortDirection': 'desc', 'itemsView': 'summary'})
+            except CodexProtocolError as exc:
+                if exc.code == 'protocol_remote_error' and (exc.data or {}).get('remote_code') == -32601:
+                    self._paged_history = False
+                    return self.request('thread/read', {'threadId': thread_id, 'includeTurns': True})
+                raise
+            self._paged_history = True
+            turns = page.get('data') if isinstance(page, dict) else None
+            if (not isinstance(turns, list) or len(turns) > 4
+                    or any(not isinstance(t, dict) or not t.get('id')
+                           or not isinstance(t.get('items'), list)
+                           or t.get('itemsView') not in ('summary', 'full') for t in turns)):
+                raise CodexProtocolError('protocol_invalid_response', 'Codex 最近轮次响应无效，未使用旧历史')
+            after = self.request('thread/read', {'threadId': thread_id, 'includeTurns': False})
+            latest = after.get('thread') if isinstance(after, dict) else None
+            if not isinstance(latest, dict) or latest.get('id') != thread_id:
+                raise CodexProtocolError('protocol_invalid_response', 'Codex 会话校验响应无效')
+            if all(thread.get(key) == latest.get(key) for key in ('updatedAt', 'status')):
+                return {'thread': {**latest, 'turns': list(reversed(turns))}}
+        raise CodexProtocolError('protocol_snapshot_changed', '会话正在变化，请同步最新状态后重试')
+
+    def resume_thread(self, thread_id: str) -> Dict[str, Any]:
+        if self._paged_history is None:
+            self.read_thread(thread_id)  # Read-only capability negotiation before attaching.
+        params: Dict[str, Any] = {'threadId': thread_id}
+        if self._paged_history:
+            params['excludeTurns'] = True
+        result = self.request('thread/resume', params)
+        if self._paged_history and isinstance(result, dict) and isinstance(result.get('thread'), dict):
+            # An intentionally empty history must not overwrite the caller's
+            # freshly verified recent window when it merges resume metadata.
+            result = {**result, 'thread': {k: v for k, v in result['thread'].items() if k != 'turns'}}
+        return result
 
     def probe_version(self) -> str:
         completed = self.version_runner(
