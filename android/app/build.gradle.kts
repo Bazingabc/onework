@@ -3,17 +3,17 @@ plugins {
 }
 
 android {
-    namespace = "com.oneripple.agentviews"
+    namespace = "com.one.onework"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.oneripple.agentviews"
+        applicationId = "com.one.onework"
         minSdk = 28
         targetSdk = 36
         versionCode = 4
         versionName = "0.3.2"
 
-        testInstrumentationRunner = "com.oneripple.agentviews.WifiSmokeInstrumentation"
+        testInstrumentationRunner = "com.one.onework.WifiSmokeInstrumentation"
     }
 
     buildTypes {

@@ -1,4 +1,4 @@
-package com.oneripple.agentviews;
+package com.one.onework;
 
 import android.app.Activity;
 import android.app.Instrumentation;

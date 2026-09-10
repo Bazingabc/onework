@@ -12,7 +12,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
-PACKAGE = "com.oneripple.agentviews.docs"
+PACKAGE = "com.one.onework.docs"
 
 
 def replace(path, old, new):
@@ -40,10 +40,10 @@ def main():
     with tempfile.TemporaryDirectory(prefix="onework-docs-") as temporary:
         android = Path(temporary) / "android"
         shutil.copytree(ROOT / "android", android, ignore=shutil.ignore_patterns("build", ".gradle", "local.properties"))
-        java = android / "app/src/main/java/com/oneripple/agentviews"
-        tests = android / "app/src/androidTest/java/com/oneripple/agentviews"
-        replace(android / "app/build.gradle.kts", 'applicationId = "com.oneripple.agentviews"', f'applicationId = "{PACKAGE}"')
-        replace(android / "app/build.gradle.kts", 'com.oneripple.agentviews.WifiSmokeInstrumentation', 'com.oneripple.agentviews.DocsCapture')
+        java = android / "app/src/main/java/com/one/onework"
+        tests = android / "app/src/androidTest/java/com/one/onework"
+        replace(android / "app/build.gradle.kts", 'applicationId = "com.one.onework"', f'applicationId = "{PACKAGE}"')
+        replace(android / "app/build.gradle.kts", 'com.one.onework.WifiSmokeInstrumentation', 'com.one.onework.DocsCapture')
         # OS-enforced isolation, in addition to replacing the only API transport.
         replace(android / "app/src/main/AndroidManifest.xml", '    <uses-permission android:name="android.permission.INTERNET" />',
                 '    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />')
@@ -64,13 +64,13 @@ def main():
             app_installed = True
             run(*adb, "install", str(android / "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"))
             test_installed = True
-            with subprocess.Popen([*adb, "shell", "am", "instrument", "-w", f"{PACKAGE}.test/com.oneripple.agentviews.DocsCapture"],
+            with subprocess.Popen([*adb, "shell", "am", "instrument", "-w", f"{PACKAGE}.test/com.one.onework.DocsCapture"],
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as capture:
                 try:
                     # Some devices block an instrumentation process's background
                     # activity launch. Explicitly foreground this demo package only.
                     time.sleep(2)
-                    run(*adb, "shell", "am", "start", "-W", "-n", f"{PACKAGE}/com.oneripple.agentviews.MainActivity", timeout=20)
+                    run(*adb, "shell", "am", "start", "-W", "-n", f"{PACKAGE}/com.one.onework.MainActivity", timeout=20)
                     output, _ = capture.communicate(timeout=45)
                     print(output)
                     if "Mock UI screenshots captured" not in output:

@@ -1,4 +1,4 @@
-package com.oneripple.agentviews;
+package com.one.onework;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
