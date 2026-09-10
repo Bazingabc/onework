@@ -145,8 +145,11 @@ def auth_finish():
 def main():
     DATA_DIR.mkdir(mode=0o700,parents=True,exist_ok=True)
     parser=argparse.ArgumentParser()
-    parser.add_argument('action',choices=['status','start','stop','pair','approve','revoke','role','configure','probe','auth-check','auth-start','auth-finish','acknowledge'])
+    parser.add_argument('action',choices=['status','start','stop','pair','approve','replace','revoke','role','configure','probe','auth-check','auth-start','auth-finish','acknowledge'])
     parser.add_argument('--id'); parser.add_argument('--role',choices=['view','control','denied'])
+    parser.add_argument('--old-id')
+    parser.add_argument('--expected-role', choices=['view','control'])
+    parser.add_argument('--confirm-online', action='store_true')
     parser.add_argument('--key',choices=['codex','lark','workspace']); parser.add_argument('--value')
     args=parser.parse_args()
     try:
@@ -162,6 +165,7 @@ def main():
             _,_,pin=certificate(DATA_DIR/'wifi')
             result=store.issue('https://'+host+':8766',pin)
         elif args.action=='approve': store.approve(args.id,args.role); result={'message':'已处理设备申请'}
+        elif args.action=='replace': result=store.replace(args.id,args.old_id,args.expected_role,args.confirm_online)
         elif args.action=='revoke': store.revoke(args.id); result={'message':'设备访问已撤销'}
         elif args.action=='role': store.set_role(args.id,args.role); result={'message':'权限已更新'}
         elif args.action=='auth-check': result=auth_check()

@@ -14,7 +14,10 @@ import ServiceManagement
     @Published var versions: [String:Any] = [:]
     @Published var authURL: String?
     @Published var authQR: NSImage?
+    @Published var replacementRequest: [String:Any]?
+    @Published var replacementError = ""
     private var polling = false
+    private var stateGeneration = 0
     private var published: NetService?
     private var publishedPin = ""
     private var qrOrigin: String?
@@ -51,9 +54,12 @@ import ServiceManagement
 
     func refresh() {
         guard !polling else { return }; polling=true
+        let generation=stateGeneration
         Task {
             let result=await Task.detached { Self.invoke(["status"]) }.value
             polling=false
+            // An in-flight pre-replacement snapshot must not resurrect old UI.
+            guard generation==stateGeneration else { refresh(); return }
             if result["ok"] as? Bool == true {
                 state=result["data"] as? [String:Any] ?? [:]
                 if notice == "正在读取 Mac 状态…" { notice="连接状态每 3 秒更新；数据源异常可分别处理。" }
@@ -116,6 +122,32 @@ import ServiceManagement
         if picker.runModal() == .OK, let url=picker.url { act(["configure","--key",key,"--value",url.path]) }
     }
 
+    func replacePairing(_ old:[String:Any], confirmOnline:Bool) {
+        guard !busy, let request=replacementRequest else { return }
+        busy=true; replacementError=""
+        var args=["replace","--id",request.requestID,"--old-id",old.deviceID,
+                  "--expected-role",old["role"] as? String ?? "control"]
+        if confirmOnline { args.append("--confirm-online") }
+        let command=args
+        Task {
+            let result=await Task.detached { Self.invoke(command) }.value
+            stateGeneration += 1
+            busy=false
+            guard result["ok"] as? Bool == true else {
+                replacementError=(result["error"] as? String ?? "响应未能确认")+"。请刷新核实；若替换已提交，旧连接不会恢复。"
+                refresh(); return
+            }
+            replacementRequest=nil
+            state["pending"]=pending.filter { $0.requestID != request.requestID }
+            let data=result["data"] as? [String:Any] ?? [:]
+            if let device=data["device"] as? [String:Any] {
+                state["devices"]=devices.filter { $0.deviceID != old.deviceID && $0.deviceID != request.requestID } + [device]
+            }
+            notice=data["message"] as? String ?? "配对已替换，请核对设备列表"
+            error=false; refresh()
+        }
+    }
+
     func confirm(_ title:String,_ detail:String,_ action:@escaping ()->Void) {
         let alert=NSAlert(); alert.messageText=title; alert.informativeText=detail
         alert.addButton(withTitle:"确认"); alert.addButton(withTitle:"取消")
@@ -160,6 +192,9 @@ struct CompanionView: View {
             }.frame(minWidth:580)
         }.frame(minWidth:850,minHeight:600)
         .task { model.refresh() }
+        .sheet(isPresented:Binding(get:{ model.replacementRequest != nil },set:{ if !$0 && !model.busy { model.replacementRequest=nil } })) {
+            ReplacePairingView(model:model)
+        }
     }
     func statusRow(_ title:String,_ state:String,_ detail:String) -> some View {
         HStack(alignment:.top) {
@@ -196,6 +231,7 @@ struct CompanionView: View {
     }
     var devices: some View {
         VStack(alignment:.leading,spacing:16) {
+            Text("每条记录代表一个配对客户端；重装或更换包名可能产生新身份。型号不能证明是同一台物理设备。").font(.caption).foregroundStyle(.secondary)
             Button("生成新的配对二维码") { model.act(["pair"]) }.disabled(!model.ready || model.busy)
             if let image=model.qr {
                 Image(nsImage:image).interpolation(.none).resizable().frame(width:290,height:290).padding(16).background(.white).cornerRadius(12)
@@ -208,12 +244,16 @@ struct CompanionView: View {
                         Button("允许查看") { model.act(["approve","--id",item.requestID,"--role","view"]) }
                         Button("允许操作") { model.confirm("允许此平板操作？","它将能发送会话消息、响应审批和完成你的飞书待办。") { model.act(["approve","--id",item.requestID,"--role","control"]) } }
                         Button("拒绝") { model.act(["approve","--id",item.requestID,"--role","denied"]) }
-                    }.padding(10)
+                        if !model.devices.isEmpty {
+                            Button("替换已有配对") { model.replacementError=""; model.replacementRequest=item }
+                        }
+                    }.padding(10).disabled(model.busy)
                 }
             }
             ForEach(model.devices,id:\.deviceID) { item in
                 GroupBox {
                     Text(item.deviceDetail).font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading).textSelection(.enabled)
+                    Text(item.deviceTimes).font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading)
                     HStack {
                         Text(item["online"] as? Bool == true ? "在线" : "离线").foregroundStyle(.secondary)
                         Text(item["role"] as? String == "control" ? "允许操作" : "仅查看")
@@ -285,7 +325,69 @@ struct CompanionView: View {
     }
 }
 
+struct ReplacePairingView: View {
+    @ObservedObject var model:Companion
+    @State private var selected:[String:Any]?
+    @State private var confirmOnline=false
+    var targetOnline:Bool {
+        guard let selected else { return false }
+        return selected["online"] as? Bool == true || model.devices.first(where:{ $0.deviceID==selected.deviceID })?["online"] as? Bool == true
+    }
+    var body: some View {
+        VStack(alignment:.leading,spacing:16) {
+            Text("替换已有配对").font(.title2.bold())
+            Text("新客户端：\(model.replacementRequest?.deviceTitle ?? "Android")").font(.headline)
+            Text("请选择要替换的记录。不会按型号自动合并，也不会修改其他设备的权限。").foregroundStyle(.secondary)
+            ScrollView {
+                VStack(spacing:10) {
+                    ForEach(model.devices,id:\.deviceID) { item in
+                        Button {
+                            selected=item; confirmOnline=false; model.replacementError=""
+                        } label: {
+                            HStack(alignment:.top,spacing:12) {
+                                Image(systemName:selected?.deviceID==item.deviceID ? "largecircle.fill.circle" : "circle")
+                                VStack(alignment:.leading,spacing:6) {
+                                    Text(item.deviceTitle).font(.headline)
+                                    Text(item.deviceDetail)
+                                    Text(item.deviceTimes)
+                                    Text("\(item["role"] as? String == "control" ? "允许操作" : "仅查看") · \(item["online"] as? Bool == true ? "在线" : "离线")")
+                                }.font(.callout)
+                                Spacer()
+                            }.padding(14).frame(maxWidth:.infinity,alignment:.leading).contentShape(Rectangle())
+                        }.buttonStyle(.plain).background(Color(nsColor:.controlBackgroundColor)).cornerRadius(10)
+                    }
+                }
+            }.frame(minHeight:160,maxHeight:300).disabled(model.busy)
+            if let selected {
+                Text("将替换：\(selected.deviceTitle) · 编号 \(selected.deviceID.suffix(6).uppercased())").font(.headline)
+                Text("新连接将继承此配对的权限（\(selected["role"] as? String == "control" ? "允许操作" : "仅查看")），旧连接将失效；不会删除平板本地数据。已受理操作不会撤回。")
+                if targetOnline {
+                    Label("旧客户端当前在线，替换会使其后续请求被拒绝。",systemImage:"exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Toggle("我确认断开这个在线客户端",isOn:$confirmOnline).disabled(model.busy)
+                }
+            }
+            if !model.replacementError.isEmpty { Text(model.replacementError).foregroundStyle(.red).textSelection(.enabled) }
+            HStack {
+                Button("刷新列表") { model.refresh() }.disabled(model.busy)
+                Spacer()
+                Button("取消") { model.replacementRequest=nil }.disabled(model.busy)
+                Button(model.busy ? "正在替换…" : "确认替换") {
+                    if let selected { model.replacePairing(selected,confirmOnline:confirmOnline) }
+                }.buttonStyle(.borderedProminent)
+                    .disabled(model.busy || selected == nil || (targetOnline && !confirmOnline))
+            }
+        }.padding(26).frame(width:650).interactiveDismissDisabled(model.busy)
+    }
+}
+
 extension Dictionary where Key==String, Value==Any {
+    var deviceTimes:String {
+        func date(_ key:String,_ missing:String) -> String {
+            guard let seconds=self[key] as? Double, seconds>0 else { return missing }
+            return Date(timeIntervalSince1970:seconds).formatted(date:.abbreviated,time:.shortened)
+        }
+        return "配对时间：\(date("pairedAt","未知")) · 最后在线：\(date("lastSeen","尚未连接"))"
+    }
     var deviceMetadata:[String:Any] { self["metadata"] as? [String:Any] ?? [:] }
     var deviceTitle:String {
         let data=deviceMetadata
