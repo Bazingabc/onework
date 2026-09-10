@@ -97,7 +97,9 @@ cd ..
 
 也可将自己构建的 APK 传到平板，通过系统文件管理器安装；只为可信安装来源授予必要权限。
 
-**覆盖升级注意：** 当前正式包名仍为 `com.oneripple.agentviews`。不同开发者的 debug 签名可能不同，因此“他人提供的 APK”不一定能被“自己构建的 APK”覆盖。遇到签名不一致时，不要直接卸载正式应用：卸载会丢失其本地配对和草稿。优先使用同一签名来源继续升级，或在开发分支中使用独立 applicationId。参见 [Android 应用签名说明](https://developer.android.com/studio/publish/app-signing)。
+**包名迁移注意：** 当前正式包名为 `com.one.onework`。旧版 `com.oneripple.agentviews` 与新版是独立应用，可同时安装；新版需要重新配对，不会自动继承旧版的配对信息或草稿。确认新版可用、旧版草稿已处理后，再自行决定是否卸载旧版。
+
+**覆盖升级注意：** 同包名下，不同开发者的 debug 签名可能不同，因此“他人提供的 APK”不一定能被“自己构建的 APK”覆盖。遇到签名不一致时，不要直接卸载正式应用：卸载会丢失其本地配对和草稿。优先使用同一签名来源继续升级，或在开发分支中使用独立 applicationId。参见 [Android 应用签名说明](https://developer.android.com/studio/publish/app-signing)。
 
 ## 4. 扫码建立日常连接
 

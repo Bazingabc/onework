@@ -16,7 +16,7 @@
 | agent_views/ | 兼容既有 Python 模块名的入口 |
 | openspec/ | 项目文档 |
 
-项目目录改为 `onework`，但 Python 模块名 `agent_views`、Android applicationId `com.oneripple.agentviews` 和 `~/.agent-views` 数据目录保持兼容，避免重装与重新配对。不要为统一命名随意修改这些标识。
+项目目录为 `onework`，Android namespace、源码包名和 applicationId 已统一为 `com.one.onework`。旧版 `com.oneripple.agentviews` 与新版可并存，但新版需要重新配对，配对信息与草稿不会自动迁移；确认新版可用前不要卸载旧版。Python 模块名 `agent_views`、Mac Bundle ID 和 `~/.agent-views` 数据目录保持不变。
 
 `bridge/codex_protocol.py` 从原项目的协议客户端收拢，已同时收拢对应回归测试；不依赖兄弟目录或其数据库代码。
 

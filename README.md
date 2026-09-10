@@ -107,7 +107,7 @@ Android 使用原生 Java，macOS 使用 SwiftUI，桥接服务使用 Python。�
 <details>
 <summary>为什么代码里还有 Agent Views / MyWork？</summary>
 
-产品从 Agent Views 演进为 MyWork，再统一为 OneWork。为保留升级兼容性，Python 模块名 `agent_views`、Android 包名 `com.oneripple.agentviews` 和 Mac 数据目录 `~/.agent-views` 暂未改名。这些不是额外依赖。
+产品从 Agent Views 演进为 MyWork，再统一为 OneWork。Android 源码包名及应用标识已统一为 `com.one.onework`；旧版 `com.oneripple.agentviews` 与新版是独立应用，新版需重新安装、配对，旧版数据不会自动继承。Python 模块名 `agent_views` 和 Mac 数据目录 `~/.agent-views` 保持不变，它们不是额外依赖。
 
 [早期说明](openspec/legacy-agent-views.md)仅作历史参考；当前安装和能力边界以本 README 及安装指南为准。
 

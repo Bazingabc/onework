@@ -24,7 +24,7 @@ python3 openspec/screenshots/capture.py --serial YOUR_DEVICE_SERIAL
 
 ADB 不在 PATH 时可添加 `--adb /absolute/path/to/adb`。默认更新此目录的两张 PNG；用 `--output /path/to/output` 可以先输出到其他目录供检查。
 
-脚本会在设备上临时安装并前台启动 `com.oneripple.agentviews.docs` 及其 `.test` 测试包，结束后卸载这两个包。**不会覆盖正式包 `com.oneripple.agentviews`，也不会读取或复制正式包的数据。** 如果目标演示包已存在，脚本会拒绝覆盖，需先检查其用途。
+脚本会在设备上临时安装并前台启动 `com.one.onework.docs` 及其 `.test` 测试包，结束后卸载这两个包。**不会覆盖正式包 `com.one.onework`，也不会读取或复制正式包的数据。** 如果目标演示包已存在，脚本会拒绝覆盖，需先检查其用途。
 
 截图副本移除了 INTERNET 和 CAMERA 权限，禁用了局域网发现；API 传输只返回本地 fixture，写请求一律拒绝。它不是可供实际使用的离线产品版本，不能用于发送消息、审批或完成待办。
 
